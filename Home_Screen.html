@@ -219,7 +219,7 @@
 </style>
 </head>
 <body>
-<main class="container mx-auto px-4 py-8 fade-in">
+<main class="container mx-auto px-4 py-8 fade-in relative z-10">
 
 <!-- Hero Section -->
 <section class="hero-gradient rounded-3xl p-12 mb-12 text-white shadow-2xl relative">
@@ -244,6 +244,12 @@
         <input type="text" id="searchBox" placeholder="Search for movies by name..." 
         class="w-full px-6 py-4 glass-effect rounded-2xl focus:outline-none focus:ring-4 focus:ring-purple-400 text-lg shadow-lg">
         <i data-feather="search" class="absolute right-6 top-5 text-purple-600"></i>
+    </div>
+    <div id="searchFeedback" class="text-center mt-4 hidden">
+        <div class="glass-effect inline-block px-6 py-4 rounded-2xl shadow-lg max-w-lg">
+            <p id="searchFeedbackText" class="text-gray-800 mb-3"></p>
+            <button id="requestMovieBtn" class="btn-primary text-white px-6 py-3 rounded-xl font-bold shadow-lg hidden">📬 Request This Movie</button>
+        </div>
     </div>
 </section>
 
@@ -369,6 +375,43 @@
         <button id="closeTicketAndViewHistory" class="mt-6 w-full btn-primary text-white px-6 py-4 rounded-xl font-bold shadow-lg">
             View My Tickets
         </button>
+    </div>
+</div>
+
+<!-- Movie Request Modal -->
+<div id="movieRequestModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center hidden z-50 backdrop-blur-sm">
+    <div class="glass-effect rounded-3xl shadow-2xl max-w-xl w-full mx-4 p-8 relative overflow-hidden modal-content">
+        <button id="closeMovieRequestModal" class="absolute top-6 right-6 text-gray-600 hover:text-gray-900 text-3xl font-bold transition hover:rotate-90 transform duration-300">&times;</button>
+        
+        <div class="text-center mb-6">
+            <h2 class="text-3xl font-black text-gray-900 mb-2">📬 Request a Movie</h2>
+            <p class="text-gray-600">Let us know what movie you'd like to see</p>
+        </div>
+        
+        <div class="space-y-4">
+            <div>
+                <label for="requestMovieTitle" class="block text-sm font-bold text-gray-700 mb-2">Movie Title *</label>
+                <input type="text" id="requestMovieTitle" placeholder="Enter movie name" 
+                class="w-full p-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:border-purple-500">
+            </div>
+            <div>
+                <label for="requestMovieType" class="block text-sm font-bold text-gray-700 mb-2">Movie Status *</label>
+                <select id="requestMovieType" class="w-full p-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:border-purple-500">
+                    <option value="released">Already Released (in theaters or streaming)</option>
+                    <option value="upcoming">Not Yet Released</option>
+                    <option value="unsure">Not Sure</option>
+                </select>
+            </div>
+            <div>
+                <label for="requestMovieComments" class="block text-sm font-bold text-gray-700 mb-2">Additional Comments (Optional)</label>
+                <textarea id="requestMovieComments" placeholder="Any additional information..." 
+                class="w-full p-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:border-purple-500 resize-none" 
+                rows="3"></textarea>
+            </div>
+            <button id="submitMovieRequestBtn" class="btn-primary text-white px-6 py-3 rounded-xl font-bold shadow-lg w-full">
+                Submit Request
+            </button>
+        </div>
     </div>
 </div>
 
@@ -721,12 +764,91 @@ function processPayment(paymentMethod) {
 
 // ===== SEARCH FUNCTION =====
 function searchMovies(searchTerm) {
-    const term = searchTerm.toLowerCase();
+    const term = searchTerm.toLowerCase().trim();
+    const searchFeedback = document.getElementById('searchFeedback');
+    const searchFeedbackText = document.getElementById('searchFeedbackText');
+    const requestMovieBtn = document.getElementById('requestMovieBtn');
+    
+    if (!term) {
+        searchFeedback.classList.add('hidden');
+        renderMovies(currentMoviesData, 'currentMovies', true, true);
+        renderMovies(upcomingMoviesData, 'upcomingMovies', true, false);
+        return;
+    }
+    
     const filteredCurrent = currentMoviesData.filter(m => m.title.toLowerCase().includes(term));
     const filteredUpcoming = upcomingMoviesData.filter(m => m.title.toLowerCase().includes(term));
     
     renderMovies(filteredCurrent, 'currentMovies', true, true);
     renderMovies(filteredUpcoming, 'upcomingMovies', true, false);
+    
+    // Show feedback if no results found
+    if (filteredCurrent.length === 0 && filteredUpcoming.length === 0 && term.length > 2) {
+        searchFeedback.classList.remove('hidden');
+        searchFeedbackText.textContent = `We couldn't find "${searchTerm}" in our current listings. Would you like to request this movie?`;
+        requestMovieBtn.classList.remove('hidden');
+        requestMovieBtn.dataset.searchTerm = searchTerm;
+    } else {
+        searchFeedback.classList.add('hidden');
+        requestMovieBtn.classList.add('hidden');
+    }
+}
+
+// ===== MOVIE REQUEST FUNCTIONS =====
+function openMovieRequestModal(movieTitle = '') {
+    document.getElementById('requestMovieTitle').value = movieTitle;
+    document.getElementById('requestMovieType').value = 'released';
+    document.getElementById('requestMovieComments').value = '';
+    document.getElementById('movieRequestModal').classList.remove('hidden');
+}
+
+function closeMovieRequestModal() {
+    document.getElementById('movieRequestModal').classList.add('hidden');
+}
+
+function submitMovieRequest() {
+    const title = document.getElementById('requestMovieTitle').value.trim();
+    const type = document.getElementById('requestMovieType').value;
+    const comments = document.getElementById('requestMovieComments').value.trim();
+    
+    if (!title) {
+        alert('Please enter a movie title');
+        return;
+    }
+    
+    // Get existing requests
+    let movieRequests = JSON.parse(localStorage.getItem('movieRequests') || '[]');
+    
+    // Check if already requested
+    if (movieRequests.some(r => r.title.toLowerCase() === title.toLowerCase() && r.status === 'pending')) {
+        alert('This movie has already been requested!');
+        return;
+    }
+    
+    const request = {
+        id: Date.now(),
+        title: title,
+        type: type,
+        comments: comments,
+        requestDate: getCurrentDateTime(),
+        status: 'pending'
+    };
+    
+    movieRequests.push(request);
+    localStorage.setItem('movieRequests', JSON.stringify(movieRequests));
+    
+    closeMovieRequestModal();
+    
+    // Show appropriate message based on type
+    if (type === 'upcoming') {
+        alert(`Thank you for your request!\n\n"${title}" is not yet available in theaters. We'll add it to our catalog when it's released and notify you!`);
+    } else {
+        alert(`Thank you for your request!\n\nWe've forwarded "${title}" to our admin team for review. We'll work on adding it to our catalog soon!`);
+    }
+    
+    // Clear search feedback
+    document.getElementById('searchFeedback').classList.add('hidden');
+    document.getElementById('searchBox').value = '';
 }
 
 // ===== EVENT LISTENERS =====
@@ -762,6 +884,15 @@ document.querySelectorAll('.paymentBtn').forEach(btn => {
 document.getElementById('searchBox').addEventListener('input', (e) => {
     searchMovies(e.target.value);
 });
+
+// Movie request functionality
+document.getElementById('requestMovieBtn').addEventListener('click', () => {
+    const searchTerm = document.getElementById('requestMovieBtn').dataset.searchTerm || '';
+    openMovieRequestModal(searchTerm);
+});
+
+document.getElementById('closeMovieRequestModal').addEventListener('click', closeMovieRequestModal);
+document.getElementById('submitMovieRequestBtn').addEventListener('click', submitMovieRequest);
 
 // ===== INITIALIZE APP =====
 populateTheaterSelect();
