@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register - ReelDeal Cinema</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+* { font-family: 'Inter', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+body::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: 
+        radial-gradient(circle at 20% 50%, rgba(120,119,198,0.3) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(255,138,101,0.3) 0%, transparent 50%),
+        radial-gradient(circle at 40% 20%, rgba(74,144,226,0.3) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.register-card {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 500px;
+    padding: 3rem;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    border-radius: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    animation: fadeIn 0.8s ease-in;
+}
+
+.register-card h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    text-align: center;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, #4a90e2, #ff8a65);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.register-card p {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: rgba(255,255,255,0.8);
+}
+
+form#registerForm {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+input, textarea, select {
+    width: 100%;
+    padding: 2rem 1rem;
+    font-size: 1.2rem;
+    border-radius: 1.5rem;
+    border: none;
+    background: rgba(255,255,255,0.15);
+    color: white;
+    backdrop-filter: blur(10px);
+    text-indent: 7px;
+    transition: all 0.3s;
+}
+
+select { color: white; }
+select option { color: black; background-color: rgba(255,255,255,0.15); }
+
+input:focus, textarea:focus, select:focus {
+    outline: none;
+    box-shadow: 0 0 15px #4a90e2;
+    border: 2px solid #4a90e2;
+}
+
+.btn-gradient {
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 1rem;
+    background: linear-gradient(135deg, #4a90e2, #ff8a65);
+    border: none;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 8px 20px rgba(74,144,226,0.5);
+}
+
+.btn-gradient:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 15px 35px rgba(74,144,226,0.6);
+}
+
+#successMessage, #errorMessage {
+    border-radius: 1rem;
+    text-align: center;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+#successMessage { background: rgba(0,128,0,0.5); color: #b6f6b6; }
+#errorMessage { background: rgba(255,0,0,0.5); color: #ffb6b6; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<div class="register-card">
+    <h1>Create Account</h1>
+    <p>Sign up to start booking your favorite movies</p>
+
+    <div id="successMessage" class="hidden">Account created successfully! Redirecting...</div>
+    <div id="errorMessage" class="hidden"></div>
+
+    <form id="registerForm">
+        <input type="text" id="name" placeholder="Full Name" required>
+        <input type="email" id="email" placeholder="Email" required>
+        <input type="tel" id="phone" placeholder="Phone (555-123-4567)" pattern="^\d{3}-\d{3}-\d{4}$" required>
+        <textarea id="address" placeholder="Home Address" rows="3" required></textarea>
+        <input type="password" id="password" placeholder="Password (min 6 chars)" required minlength="6">
+        <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+        <select id="accountType">
+            <option value="user">Regular User (default)</option>
+            <option value="admin">Admin (requires code)</option>
+        </select>
+        <input type="password" id="adminCode" placeholder="Admin Code" class="hidden">
+
+        <button type="submit" class="btn-gradient">Create Account</button>
+    </form>
+
+    <p class="mt-6 text-center text-sm text-white/70">
+        Already have an account? <a href="login.html" class="text-white underline hover:text-indigo-200">Login here</a>
+    </p>
+</div>
+
+<footer style="text-align:center;padding:1rem;color:#aaa;font-size:0.85rem;position:absolute;bottom:0;width:100%;">
+    © 2025 ReelDeal Cinema. All rights reserved.
+</footer>
+
+<script>
+// --- PASSWORD HASH ---
+function hashPassword(password) { 
+    return CryptoJS.SHA256(password).toString(); 
+}
+
+// --- GENERATE UNIQUE USER ID ---
+function generateUserId() { 
+    return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); 
+}
+
+// --- ADMIN CODE TOGGLE ---
+document.getElementById('accountType').addEventListener('change', function() {
+    document.getElementById('adminCode').classList.toggle('hidden', this.value !== 'admin');
+});
+
+// --- FORM SUBMISSION ---
+document.getElementById('registerForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const errorMessage = document.getElementById('errorMessage');
+    const successMessage = document.getElementById('successMessage');
+    errorMessage.classList.add('hidden');
+    successMessage.classList.add('hidden');
+
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim().toLowerCase();
+    const phone = document.getElementById('phone').value.trim();
+    const address = document.getElementById('address').value.trim();
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    const accountType = document.getElementById('accountType').value;
+    const adminCode = document.getElementById('adminCode').value.trim();
+
+    // Basic validation
+    if (password !== confirmPassword) { errorMessage.textContent = 'Passwords do not match!'; errorMessage.classList.remove('hidden'); return; }
+    if (password.length < 6) { errorMessage.textContent = 'Password must be at least 6 characters!'; errorMessage.classList.remove('hidden'); return; }
+    if (accountType === 'admin' && adminCode !== 'ADMIN2025') { errorMessage.textContent = 'Invalid admin code!'; errorMessage.classList.remove('hidden'); return; }
+
+    const phonePattern = /^\d{3}-\d{3}-\d{4}$/;
+    if (!phonePattern.test(phone)) { errorMessage.textContent = 'Phone number must be in the format 555-123-4567'; errorMessage.classList.remove('hidden'); return; }
+
+    // Load existing users from the key the admin panel uses
+    let registeredUsers = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+
+    // Check for duplicate email
+    if (registeredUsers.some(u => u.email.toLowerCase() === email)) {
+        errorMessage.textContent = 'Email already registered!';
+        errorMessage.classList.remove('hidden');
+        return;
+    }
+
+    // Create new user
+    const userId = generateUserId();
+    const newUser = {
+        id: userId,
+        userId: userId,
+        name,
+        email,
+        phone,
+        address,
+        passwordHash: hashPassword(password),
+        accountType,               // "user" or "admin"
+        signupDate: new Date().toISOString(),
+        purchaseHistory: [],
+        reviews: []
+    };
+
+    // Save to shared list (admin panel reads this)
+    registeredUsers.push(newUser);
+    localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
+
+    // Optional: keep old per-user keys for backward compatibility with login page
+    localStorage.setItem(`user:${userId}`, JSON.stringify(newUser));
+    localStorage.setItem(`user_email:${email}`, userId);
+
+    // Success!
+    successMessage.classList.remove('hidden');
+    setTimeout(() => {
+        if (accountType === 'admin') {
+            window.location.href = 'admin.html';
+        } else {
+            window.location.href = 'login.html';
+        }
+    }, 2000);
+});
+</script>
+
+</body>
+</html>
