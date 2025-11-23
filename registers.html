@@ -71,19 +71,22 @@ form#registerForm {
 
 input, textarea, select {
     width: 100%;
-    padding: 2rem 1rem;
-    font-size: 1.2rem;
-    border-radius: 1.5rem;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    border-radius: 1rem;
     border: none;
     background: rgba(255,255,255,0.15);
     color: white;
     backdrop-filter: blur(10px);
-    text-indent: 7px;
     transition: all 0.3s;
 }
 
+input::placeholder, textarea::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
 select { color: white; }
-select option { color: black; background-color: rgba(255,255,255,0.15); }
+select option { color: black; background-color: white; }
 
 input:focus, textarea:focus, select:focus {
     outline: none;
@@ -137,7 +140,7 @@ input:focus, textarea:focus, select:focus {
     <form id="registerForm">
         <input type="text" id="name" placeholder="Full Name" required>
         <input type="email" id="email" placeholder="Email" required>
-        <input type="tel" id="phone" placeholder="Phone (555-123-4567)" pattern="^\d{3}-\d{3}-\d{4}$" required>
+        <input type="tel" id="phone" placeholder="Phone (555-123-4567)" maxlength="12" required>
         <textarea id="address" placeholder="Home Address" rows="3" required></textarea>
         <input type="password" id="password" placeholder="Password (min 6 chars)" required minlength="6">
         <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
@@ -160,6 +163,31 @@ input:focus, textarea:focus, select:focus {
 </footer>
 
 <script>
+// --- AUTO-FORMAT PHONE NUMBER ---
+document.getElementById('phone').addEventListener('input', function(e) {
+    // Remove all non-digit characters
+    let value = e.target.value.replace(/\D/g, '');
+    
+    // Limit to 10 digits
+    if (value.length > 10) {
+        value = value.slice(0, 10);
+    }
+    
+    // Format as XXX-XXX-XXXX
+    let formattedValue = '';
+    if (value.length > 0) {
+        formattedValue = value.substring(0, 3);
+    }
+    if (value.length >= 4) {
+        formattedValue += '-' + value.substring(3, 6);
+    }
+    if (value.length >= 7) {
+        formattedValue += '-' + value.substring(6, 10);
+    }
+    
+    e.target.value = formattedValue;
+});
+
 // --- PASSWORD HASH ---
 function hashPassword(password) { 
     return CryptoJS.SHA256(password).toString(); 
@@ -194,12 +222,28 @@ document.getElementById('registerForm').addEventListener('submit', function(e) {
     const adminCode = document.getElementById('adminCode').value.trim();
 
     // Basic validation
-    if (password !== confirmPassword) { errorMessage.textContent = 'Passwords do not match!'; errorMessage.classList.remove('hidden'); return; }
-    if (password.length < 6) { errorMessage.textContent = 'Password must be at least 6 characters!'; errorMessage.classList.remove('hidden'); return; }
-    if (accountType === 'admin' && adminCode !== 'ADMIN2025') { errorMessage.textContent = 'Invalid admin code!'; errorMessage.classList.remove('hidden'); return; }
+    if (password !== confirmPassword) { 
+        errorMessage.textContent = 'Passwords do not match!'; 
+        errorMessage.classList.remove('hidden'); 
+        return; 
+    }
+    if (password.length < 6) { 
+        errorMessage.textContent = 'Password must be at least 6 characters!'; 
+        errorMessage.classList.remove('hidden'); 
+        return; 
+    }
+    if (accountType === 'admin' && adminCode !== 'ADMIN2025') { 
+        errorMessage.textContent = 'Invalid admin code!'; 
+        errorMessage.classList.remove('hidden'); 
+        return; 
+    }
 
     const phonePattern = /^\d{3}-\d{3}-\d{4}$/;
-    if (!phonePattern.test(phone)) { errorMessage.textContent = 'Phone number must be in the format 555-123-4567'; errorMessage.classList.remove('hidden'); return; }
+    if (!phonePattern.test(phone)) { 
+        errorMessage.textContent = 'Phone number must be 10 digits (format: 555-123-4567)'; 
+        errorMessage.classList.remove('hidden'); 
+        return; 
+    }
 
     // Load existing users from the key the admin panel uses
     let registeredUsers = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
@@ -221,7 +265,7 @@ document.getElementById('registerForm').addEventListener('submit', function(e) {
         phone,
         address,
         passwordHash: hashPassword(password),
-        accountType,               // "user" or "admin"
+        accountType,
         signupDate: new Date().toISOString(),
         purchaseHistory: [],
         reviews: []
